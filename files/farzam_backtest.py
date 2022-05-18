@@ -1,13 +1,11 @@
 from itertools import count
+import numpy as np
 import pandas
-from strategy_tester.strategy import Strategy
+import pandas as pd
+import pandas_ta as ta
 from strategy_tester.indicator import Indicator
 from strategy_tester.pandas_ta_supplementary_libraries import *
-import pandas_ta as ta
-import pandas as pd
-import numpy as np
-
-
+from strategy_tester.strategy import Strategy
 
 
 class Haku(Strategy):
@@ -31,12 +29,12 @@ class Haku(Strategy):
         strategy.short_top = 0.0
         strategy.short_bot = 0.0
         strategy.short_diff = 0.0
-        strategy.long_entry = 2.36
+        strategy.long_entry = 2.5
         strategy.short_entry = 7.86
-        strategy.take_profit_long = 10.7  # 11
-        strategy.take_profit_short = 10.7  # 9
-        strategy.stop_loss_long = 10.9  # 11
-        strategy.stop_loss_short = 10.9  # 11
+        strategy.take_profit_long = 11
+        strategy.take_profit_short = 9
+        strategy.stop_loss_long = 11
+        strategy.stop_loss_short = 11
         strategy.h_lookback_cond = 4
         strategy.l_lookback_cond = 4
         strategy._counter = 0
@@ -69,52 +67,66 @@ class Haku(Strategy):
         return lowest(strategy.botSrc.iloc[:int(row.idx)+1], strategy.botPer-row.counter).iat[-1]
 
     def indicators(strategy) -> None:
-        stdev20 = Indicator("stdev20", ta.stdev, args=(strategy.close, 20), wait=False)
+        stdev20 = Indicator("stdev20", ta.stdev, args=(
+            strategy.close, 20), wait=False)
         sma9 = Indicator("sma9", ta.sma, args=(strategy.close, 9), wait=False)
         # strategy.stdev20_ = strategy.stdev20 / strategy.sma9
-        sma100 = Indicator("sma100", ta.sma, args=(strategy.close, 100), wait=False)
-        sma500 = Indicator("sma500", ta.sma, args=(strategy.close, 500), wait=False)
+        sma100 = Indicator("sma100", ta.sma, args=(
+            strategy.close, 100), wait=False)
+        sma500 = Indicator("sma500", ta.sma, args=(
+            strategy.close, 500), wait=False)
         strategy.add(stdev20, sma9, sma100, sma500)
 
 
     def condition(strategy):
         stdev20_sma9 = strategy.stdev20 * 10000 / strategy.sma9
-        strategy.stdev20_sma9_conds = stdev20_sma9.apply(lambda x: x>=strategy.stdev_max_reset)
-        strategy.counter = strategy.stdev20_sma9_conds.apply(strategy.calculate_counter)
+        strategy.stdev20_sma9_conds = stdev20_sma9.apply(
+            lambda x: x >= strategy.stdev_max_reset)
+        strategy.counter = strategy.stdev20_sma9_conds.apply(
+            strategy.calculate_counter)
         strategy.counter = strategy.counter.rename("counter")
         sma_cond_long = (
-                1000*(strategy.sma500 - strategy.sma100)/strategy.sma500).apply(lambda x: x < strategy.long_ma_max)
+            1000*(strategy.sma500 - strategy.sma100)/strategy.sma500).apply(lambda x: x < strategy.long_ma_max)
         sma_cond_short = (
-                1000*(strategy.sma500 - strategy.sma100)/strategy.sma500).apply(lambda x: x > strategy.short_ma_min)
+            1000*(strategy.sma500 - strategy.sma100)/strategy.sma500).apply(lambda x: x > strategy.short_ma_min)
 
-        strategy.topSrc_botSrc_counter = pd.concat([strategy.topSrc, strategy.botSrc, strategy.counter], axis=1)
-        strategy.topSrc_botSrc_counter['idx'] = np.arange(len(strategy.topSrc_botSrc_counter))
-        strategy.top = strategy.topSrc_botSrc_counter.apply(strategy.calculate_top, axis=1)
-        strategy.bot = strategy.topSrc_botSrc_counter.apply(strategy.calculate_bot, axis=1)
+        strategy.topSrc_botSrc_counter = pd.concat(
+            [strategy.topSrc, strategy.botSrc, strategy.counter], axis=1)
+        strategy.topSrc_botSrc_counter['idx'] = np.arange(
+            len(strategy.topSrc_botSrc_counter))
+        strategy.top = strategy.topSrc_botSrc_counter.apply(
+            strategy.calculate_top, axis=1)
+        strategy.bot = strategy.topSrc_botSrc_counter.apply(
+            strategy.calculate_bot, axis=1)
         strategy.diff = strategy.top - strategy.bot
         strategy.top_5 = strategy.top.shift(5)
         strategy.bot_5 = strategy.bot.shift(5)
         same_highest_cond = strategy.top <= strategy.top_5
         same_lowest_cond = strategy.bot >= strategy.bot_5
 
-        
-        entry_condition = (strategy.stdev20 * 10000 / strategy.sma9).apply(lambda x: x >= strategy.stdev_max_entry)
-
+        entry_condition = (strategy.stdev20 * 10000 /
+                           strategy.sma9).apply(lambda x: x >= strategy.stdev_max_entry)
 
         long_entry_cond = (strategy.close <= strategy.bot + strategy.long_entry * strategy.diff
-                        ) & same_lowest_cond & entry_condition & sma_cond_long
+                           ) & same_lowest_cond & entry_condition & sma_cond_long
         short_entry_cond = (strategy.close >= strategy.bot + strategy.short_entry * strategy.diff
                             ) & same_highest_cond & entry_condition & sma_cond_short
 
-        long_exit_tp_cond = (strategy.close >= strategy.long_bot+strategy.take_profit_long*strategy.long_diff)
-        long_exit_sl_cond = (strategy.close <= strategy.long_bot-strategy.stop_loss_long*strategy.long_diff)
-        short_exit_tp_cond = (strategy.close <= strategy.short_top-strategy.take_profit_short*strategy.short_diff)
-        short_exit_sl_cond = (strategy.close >= strategy.short_top+strategy.stop_loss_short*strategy.short_diff)
+        long_exit_tp_cond = (strategy.close >= strategy.long_bot +
+                             strategy.take_profit_long*strategy.long_diff)
+        long_exit_sl_cond = (
+            strategy.close <= strategy.long_bot-strategy.stop_loss_long*strategy.long_diff)
+        short_exit_tp_cond = (strategy.close <= strategy.short_top -
+                              strategy.take_profit_short*strategy.short_diff)
+        short_exit_sl_cond = (strategy.close >= strategy.short_top +
+                              strategy.stop_loss_short*strategy.short_diff)
 
         strategy.conditions = (long_entry_cond.rename("long_entry"), short_entry_cond.rename("short_entry"),
-                                long_exit_tp_cond.rename("long_exit_tp"), long_exit_sl_cond.rename("long_exit_sl"),
-                                short_exit_tp_cond.rename("short_exit_tp"), short_exit_sl_cond.rename("short_exit_sl"),
-                                strategy.top.rename("top"), strategy.bot.rename("bot"), strategy.diff.rename("diff"))
+                               long_exit_tp_cond.rename(
+                                   "long_exit_tp"), long_exit_sl_cond.rename("long_exit_sl"),
+                               short_exit_tp_cond.rename(
+                                   "short_exit_tp"), short_exit_sl_cond.rename("short_exit_sl"),
+                               strategy.top.rename("top"), strategy.bot.rename("bot"), strategy.diff.rename("diff"))
 
 
     def trade_calc(strategy, row):
@@ -122,14 +134,14 @@ class Haku(Strategy):
         if strategy.in_position == 1:
             # close long tp
             if row.long_exit_tp:
-                strategy.exit(strategy.long_id_farzam, signal="tp")
+                strategy.exit(strategy.long_id_farzam)
                 strategy.in_position = 0
                 strategy.long_top = 0.0
                 strategy.long_bot = 0.0
                 strategy.long_diff = 0.0
             # close long sl
             elif row.long_exit_sl:
-                strategy.exit(strategy.long_id_farzam, signal="sl")
+                strategy.exit(strategy.long_id_farzam)
                 strategy.in_position = 0
                 strategy.long_top = 0.0
                 strategy.long_bot = 0.0
@@ -138,14 +150,14 @@ class Haku(Strategy):
         if strategy.in_position == -1:
             # close short tp
             if row.short_exit_tp:
-                strategy.exit(strategy.short_id_farzam, signal="tp")
+                strategy.exit(strategy.short_id_farzam)
                 strategy.in_position = 0
                 strategy.long_top = 0.0
                 strategy.long_bot = 0.0
                 strategy.long_diff = 0.0
             # close short sl
             if row.short_exit_sl:
-                strategy.exit(strategy.short_id_farzam, signal="sl")
+                strategy.exit(strategy.short_id_farzam)
                 strategy.in_position = 0
                 strategy.long_top = 0.0
                 strategy.long_bot = 0.0
@@ -153,14 +165,14 @@ class Haku(Strategy):
 
         if strategy.in_position == 0:
             if row.long_entry:
-                strategy.entry(strategy.long_id_farzam, signal="long")
+                strategy.entry(strategy.long_id_farzam,"long")
                 strategy.in_position = 1
                 strategy.long_top = row.top
                 strategy.long_bot = row.bot
                 strategy.long_diff = row.diff
 
             elif row.short_entry:
-                strategy.entry(strategy.short_id_farzam, signal="short")
+                strategy.entry(strategy.short_id_farzam,"short")
                 strategy.in_position = -1
                 strategy.short_top = row.top
                 strategy.short_bot = row.bot
