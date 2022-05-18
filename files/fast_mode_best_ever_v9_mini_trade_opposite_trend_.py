@@ -178,7 +178,6 @@ entry_stdev = [95]
 long_ma_max = [1000]
 short_ma_min = [-20]
 devide_length = [20]
-# mini trade :
 tp_l_2  = [1.5,2]
 sl_l_2  = [1.5,2]
 tp_sh_2 = [1.5,2]
