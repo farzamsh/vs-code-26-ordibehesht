@@ -73,8 +73,8 @@ def farzam_indicators(open, high, low, close, parameters_input):
     bot = counter.apply(calculate_bot, args=(low,), axis=1).rename("bot")
     diff = (top - bot).rename("diffrent_top_bot")
 
-    same_highest_cond = top <= top.shift(5)
-    same_lowest_cond = bot >= bot.shift(5)
+    same_highest_cond = top <= top.shift(4)
+    same_lowest_cond = bot >= bot.shift(4)
 
     entry_long = parameters_input["entry_long"]
     entry_short = parameters_input["entry_short"]
@@ -205,17 +205,38 @@ farzam_indicators(open, high, low, close, parameters_input)
 entry_long = [2.36]
 entry_short = [7.5]
 reset_stdev = [65]
-length = [250, 300]
+length = [300]
 reset_counter_to = [5]
 take_profit_long = [1.1]
 stop_loss_long = [0.9]
-take_profit_short = [1.1, 1.2]
-stop_loss_short = [1.1, 1.2]
+take_profit_short = [1.1]
+stop_loss_short = [1.2]
 entry_stdev = [95]
 long_ma_max = [1000]
 short_ma_min = [-20]
-devide_length = [20]
+devide_length = [15]
 tp_l_2  = [0.9,1,1.1,1.2]
 sl_l_2  = [0.9,1,1.1,1.2]
 tp_sh_2 = [0.9,1,1.1,1.2]
 sl_sh_2 = [0.9,1,1.1,1.2]
+
+# best ever over 10,000 percent
+"""
+entry_long = [2.36]
+entry_short = [7.5]
+reset_stdev = [65]
+length = [300]
+reset_counter_to = [5]
+take_profit_long = [1.1]
+stop_loss_long = [0.9]
+take_profit_short = [1.1]
+stop_loss_short = [1.2]
+entry_stdev = [95]
+long_ma_max = [1000]
+short_ma_min = [-20]
+devide_length = [15]
+tp_l_2  = [1.1]
+sl_l_2  = [0.9]
+tp_sh_2 = [1.1]
+sl_sh_2 = [1.1]
+"""

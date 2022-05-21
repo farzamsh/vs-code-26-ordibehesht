@@ -3,6 +3,7 @@
 
 # Requires
 import time
+from xml.etree.ElementTree import Comment
 import pandas as pd
 import pandas_ta as ta
 from functions.pandas_ta_supplementary_libraries import *
@@ -38,8 +39,8 @@ def farzam_indicators(open, high, low, close, parameters_input):
     long_trade = False
     short_trade = False
     
-    stdev20 = ta.stdev(close, 20)*10000/ta.sma(close, 9)
-    sma100  = ta.sma(close,100)
+    stdev20 = (ta.stdev(close, 20)*10000/ta.sma(close, 9)).rename('stdev20')
+    sma100  = ta.sma(close,100).rename('sma100')
     sma500  = ta.sma(close,500)
     lenght = parameters_input['length']
     sma_cond_long= (1000*(sma500 - sma100)/sma500)<parameters_input["long_ma_max"]
@@ -76,7 +77,7 @@ def farzam_indicators(open, high, low, close, parameters_input):
     entry_condition = stdev20 <= parameters_input["entry_stdev"]
     long_entry_cond = (close <= bot + entry_long/10 * diff) & same_lowest_cond & entry_condition & sma_cond_long
     short_entry_cond = (close >= bot + entry_short/10 * diff) & same_highest_cond & entry_condition & sma_cond_short
-    conditions = pd.concat([long_entry_cond, short_entry_cond, top, bot, diff, close], axis=1).rename(columns={0: "long_entry_cond", 1: "short_entry_cond", 2: "top", 3: "bot", "close_price": "close"})
+    conditions = pd.concat([long_entry_cond, short_entry_cond, top, bot, diff, close, stdev20, counter,sma100], axis=1).rename(columns={0: "long_entry_cond", 1: "short_entry_cond", 2: "top", 3: "bot", "close_price": "close"})
     
     def condition_trade(row, take_profit_long,take_profit_short,stop_loss_long,stop_loss_short):
         """Set open trade and close trade"""
@@ -129,7 +130,9 @@ def farzam_indicators(open, high, low, close, parameters_input):
             short_trade = False
         
         if row.long_entry_cond and not in_position:
-            strategy.entry(row.name, "long", "long")
+            sma_is_h = row.close - row.sma100 > 0
+            strategy.entry(row.name, "long", "long",comment = f"top ={row.top:.2f} , bot ={row.bot:.2f} , \
+                             diff ={row.diffrent_top_bot:.2f} , close = {row.close} , stdev20 ={row.stdev20:.2f} , counter ={row.counter}, (C > sma): {sma_is_h}")
             in_position = True
             long_top = row.top
             long_bot = row.bot
@@ -138,7 +141,9 @@ def farzam_indicators(open, high, low, close, parameters_input):
             short_trade = False
         
         if row.short_entry_cond and not in_position:
-            strategy.entry(row.name, "short", "short")
+            sma_is_l = row.close - row.sma100 < 0
+            strategy.entry(row.name, "short", "short",comment = f"top ={row.top:.2f} , bot ={row.bot:.2f} , \
+                             diff ={row.diffrent_top_bot:.2f} , close = {row.close} , stdev20 ={row.stdev20:.2f} , counter ={row.counter} ,( C < sma): {sma_is_l}")
             in_position = True
             short_top = row.top
             short_bot = row.bot
